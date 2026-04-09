@@ -219,6 +219,7 @@ __marimo__/
 calimoto_app/**
 calimoto_work/**
 results/**
+**/**
 *.keystore
 *.apk
 *.env

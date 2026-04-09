@@ -219,39 +219,6 @@ Wenn die App-Version aktualisiert wird:
 - Suche nach Dateien mit: `Le8/j$a;->f()Z`
 - Oder suche nach: `TimeLineScreenContent` oder `premium.timeline`
 
-### 4. **fragment_profile_details.xml**
-- Pfad sollte stabil sein
-- Falls nicht gefunden, suche nach Profile + Compose-View
-- ID `profile_account_compose_view` ist charakteristisch
-
----
-
-
-## 🚀 Automatisiertes Patching (Optional)
-
-Für zukünftige Versionen könnte ein Python-Script erstellt werden:
-
-```python
-# pseudo-code
-def apply_calimoto_patches(extracted_app_dir):
-    # 0. Patch GPX Export
-    patch_smali(f"{extracted_app_dir}/smali_classes3/e8/j$a.smali",
-                "method e() with premium checks", "return false directly")
-    
-    # 1. Patch Remote Config
-    patch_xml(f"{extracted_app_dir}/res/xml/remote_config_defaults.xml",
-              "skipPaywallInfoPercentAndroid", "0.5", "1.0")
-
-    # 2. Find and patch smali files with Le8/j$a;->f()Z
-    for smali_file in find_files_with(extracted_app_dir, "Le8/j$a"):
-        patch_smali_premium_check(smali_file)
-
-    # 3. Patch profile layout
-    patch_xml(f"{extracted_app_dir}/res/layout/fragment_profile_details.xml",
-              "profile_account_compose_view", "<!-- kommentieren -->")
-
-    print("✅ Patches angewendet!")
-```
 
 ---
 
