@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 # .env Datei immer relativ zum Script-Verzeichnis laden/speichern
 ENV_FILE = Path(__file__).resolve().parent / '.calimoto-patcher.env'
+DEFAULT_KEYSTORE_FILE = Path(__file__).resolve().parent / 'calimoto.keystore'
 
 
 class KeystoreGenerator:
@@ -943,7 +944,9 @@ class MainWindow(QMainWindow):
 
     def check_tools(self):
         """Check for required tools"""
-        logger.info("Checking tools...")
+        logger.info("Dependency-Check gestartet...")
+
+        self.config = EnvConfig.load()
 
         try:
             result = subprocess.run(['java', '-version'],
@@ -959,6 +962,19 @@ class MainWindow(QMainWindow):
 
         self.apksigner_path = ToolFinder.find_apksigner()
         logger.info(f"apksigner: {self.apksigner_path or 'NOT FOUND'}")
+
+        if self.java_ok:
+            keystore_ok, keystore_msg = self._ensure_keystore_exists(strict=False)
+            if not keystore_ok:
+                logger.warning(f"Keystore Auto-Create bei Dependency-Check fehlgeschlagen: {keystore_msg}")
+            elif keystore_msg == "CREATED":
+                logger.info("Keystore wurde beim Dependency-Check automatisch erstellt")
+            elif keystore_msg == "EXISTS":
+                logger.info("Keystore vorhanden")
+        else:
+            logger.info("Keystore-Check übersprungen: Java fehlt")
+
+        logger.info("Dependency-Check abgeschlossen")
 
         self.refresh_run_button_state()
 
@@ -1051,14 +1067,14 @@ class MainWindow(QMainWindow):
         if not self.config:
             return False, "Setup/Keystore missing"
 
-        required_keys = ['keystore_path', 'alias', 'keystore_password']
+        required_keys = ['keystore_path']
         missing = [k for k in required_keys if not self.config.get(k)]
         if missing:
             return False, f"Setup incomplete: {', '.join(missing)}"
 
         keystore_path = self.config.get('keystore_path', '')
-        if not keystore_path or not Path(keystore_path).exists():
-            return False, "Keystore not found"
+        if keystore_path and Path(keystore_path).exists() and not self.config.get('keystore_password'):
+            return False, "Setup incomplete: keystore_password"
 
         if not self.apk_path:
             return False, "Select APK file"
@@ -1066,6 +1082,44 @@ class MainWindow(QMainWindow):
             return False, "APK file not found"
 
         return True, "Ready to start"
+
+    def _ensure_keystore_exists(self, strict: bool = True) -> tuple[bool, str]:
+        """Create missing keystore automatically from env configuration."""
+        self.config = self.config or {}
+        keystore_path = self.config.get('keystore_path', '')
+        alias = self.config.get('alias') or 'meinalias'
+
+        if not keystore_path:
+            if not strict:
+                keystore_path = str(DEFAULT_KEYSTORE_FILE)
+                self.config['keystore_path'] = keystore_path
+                self.config['alias'] = alias
+                EnvConfig.save(self.config)
+                logger.info(f"Keystore-Pfad fehlt in Env - nutze Standardpfad: {keystore_path}")
+            else:
+                return False, "Setup incomplete: keystore_path"
+
+        keystore_file = Path(keystore_path)
+        if keystore_file.exists():
+            return True, "EXISTS"
+
+        logger.warning("Keystore fehlt - starte automatische Erstellung aus Env...")
+
+        try:
+            keystore_file.parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            return False, f"Keystore path error: {e}"
+
+        success, generated_password, error = KeystoreGenerator.create_keystore(str(keystore_file), alias)
+        if not success:
+            return False, f"Keystore creation failed: {error}"
+
+        self.config['keystore_path'] = str(keystore_file)
+        self.config['alias'] = alias
+        self.config['keystore_password'] = generated_password
+        EnvConfig.save(self.config)
+        logger.info("Keystore automatisch erstellt und Env aktualisiert")
+        return True, "CREATED"
 
     def run_workflow(self):
         """Start the patching workflow"""
@@ -1079,6 +1133,12 @@ class MainWindow(QMainWindow):
             return
 
         self.config = EnvConfig.load()
+        success, msg = self._ensure_keystore_exists()
+        if not success:
+            QMessageBox.critical(self, "Error", f"Cannot prepare keystore: {msg}")
+            self.refresh_run_button_state()
+            return
+
         self._set_running_ui_state(True)
 
         # Create and start worker thread
