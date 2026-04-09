@@ -1,9 +1,10 @@
 # Calimoto APK Patcher Tool
 
+![screenshot](screenshot.png)
 
 ## Installation
 
-### Voraussetzungen installieren
+### install dependencies
 
 **Windows:**
 ```powershell
@@ -31,7 +32,7 @@ apt-get install -y default-jdk apktool android-sdk-build-tools
 brew install openjdk apktool android-sdk
 ```
 
-### Python Script starten
+# start python script
 
 ```properties
 python calimoto_patcher.py
