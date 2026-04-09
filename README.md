@@ -4,6 +4,8 @@
 
 ## Installation
 
+get the calimoto apk from apkpure: <https://apkpure.com/de/calimoto-%E2%80%94-motorcycle-gps/com.calimoto.calimoto>
+
 ### Install dependencies
 
 **Windows:**
