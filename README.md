@@ -4,23 +4,19 @@
 
 ## Installation
 
-### install dependencies
+### Install dependencies
 
 **Windows:**
-```powershell
-# 1. Java
-# Downloade von: https://www.oracle.com/java/technologies/downloads/
+1. Java: <https://www.oracle.com/java/technologies/downloads/>
 
-# 2. Android SDK Build Tools (für apksigner)
-# Option A: Android Studio
-#          https://developer.android.com/studio
-# 
-# Option B: Nur Build Tools
-#          https://developer.android.com/tools/releases/build-tools
+2. Android SDK Build Tools (apksigner)
+- Option A: Android Studio
+         <https://developer.android.com/studio>
 
-# 3. apktool
-# Downloade: https://ibotpeaches.github.io/Apktool/
-```
+- Option B: only build tools
+         <https://developer.android.com/tools/releases/build-tools>
+
+3. apktool: <https://ibotpeaches.github.io/Apktool/>
 
 **Linux:**
 ```properties
@@ -35,5 +31,8 @@ brew install openjdk apktool android-sdk
 # start python script
 
 ```properties
+# install dependencies
+pip install PySide6 
+
 python calimoto_patcher.py
 ```
