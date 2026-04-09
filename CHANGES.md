@@ -175,13 +175,9 @@ gedit smali_classes3/j7/r0.smali
 # Ersetze den Block wie oben
 ```
 
-**Schritt 4: Profil-Layout ändern**
-```properties
-gedit res/layout/fragment_profile_details.xml
-# Kommentiere die profile_account_compose_view wie oben
-```
 
-**Schritt 5: Rebuild & Sign**
+
+**Rebuild & Sign**
 ```properties
 apktool b -o calimoto-modified.apk calimoto_app
 
