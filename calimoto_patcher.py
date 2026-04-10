@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QFileDialog, QMessageBox, QGroupBox, QFrame, QScrollArea
 )
 from PySide6.QtCore import Qt, QThread, Signal, QSize, QTimer, QObject
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QFont, QGuiApplication
 
 # UTF-8 für Windows
 os.environ['PYTHONIOENCODING'] = 'utf-8'
@@ -828,7 +828,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Calimoto Patcher")
-        self.setGeometry(100, 100, 1000, 600)
+        self.resize(1000, 600)
+        self.center()
 
         # Farben (Material Design 3)
         self.colors = {
@@ -871,6 +872,16 @@ class MainWindow(QMainWindow):
 
         # Auto-check tools on startup
         self.check_tools()
+
+    
+    def center(self):
+        screen = self.screen() or QGuiApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        
+        x = screen_geometry.x() + (screen_geometry.width() - self.width()) // 2
+        y = screen_geometry.y() + (screen_geometry.height() - self.height()) // 2
+        
+        self.move(x, y)
 
     def setup_ui(self):
         """Setup main layout"""
