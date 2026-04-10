@@ -42,3 +42,4 @@ python calimoto_patcher.py
 ### TODOs
 - better error detection
 - make everything english
+- delete old `apk` and `idsig`
