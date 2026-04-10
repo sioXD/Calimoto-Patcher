@@ -249,23 +249,19 @@ class PatchManager:
             'replace': '<key>skipPaywallInfoPercentAndroid</key>\n<value>1.0</value>'
         },
         'patch_2_navigation_unlock': {
-            'name': 'Navigation Unlock',
+            'name': 'Navigation & Premium Features Unlock',
             'operations': [
+                {
+                    'file': 'smali_classes4/md/d.smali',
+                    'type': 'smali_block',
+                    'search': r'\.method public final L0\(\)Z\s*\.locals 3\s*invoke-static \{\}, Lcom/calimoto/calimoto/parse/user/a;->S\(\)Z\s*move-result v0\s*if-nez v0, :cond_1',
+                    'replace': '.method public final L0()Z\n    .locals 3\n    const/4 v0, 0x1\n    # Always allow'
+                },
                 {
                     'file': 'smali_classes3/com/calimoto/calimoto/premium/featureview/ActivityFeatureView.smali',
                     'type': 'smali_block',
                     'search': r'sget-object v2, L[^;]+/j;->a:L[^;]+/j\$a;\s*invoke-virtual \{v2\}, L[^;]+/j\$a;->f\(\)Z\s*move-result v2',
                     'replace': 'const/4 v2, 0x1'
-                },
-                {
-                    'file': 'smali_classes3/j7/r0.smali',
-                    'file_candidates': [
-                        'smali_classes3/s7/r0.smali',
-                    ],
-                    'file_glob': 'smali_classes*/**/r0.smali',
-                    'type': 'smali_block',
-                    'search': r':goto_15\s*sget-object v7, L[^;]+/j;->a:L[^;]+/j\$a;\s*invoke-virtual \{v7\}, L[^;]+/j\$a;->f\(\)Z\s*move-result v7\s*sget-object v8, Lkotlin/Unit;->a:Lkotlin/Unit;\s*invoke-interface \{v13, v5\}, Landroidx/compose/runtime/Composer;->changedInstance\(Ljava/lang/Object;\)Z',
-                    'replace': ':goto_15\n    const/4 v7, 0x1\n    sget-object v8, Lkotlin/Unit;->a:Lkotlin/Unit;\n    invoke-interface {v13, v5}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z'
                 },
             ],
         },
