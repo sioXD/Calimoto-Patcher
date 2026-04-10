@@ -750,7 +750,6 @@ QScrollBar:vertical {
 
 QScrollBar::handle:vertical {
     background-color: #353535;
-    border-radius: 6px;
     min-height: 20px;
 }
 
