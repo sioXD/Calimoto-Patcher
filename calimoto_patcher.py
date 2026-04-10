@@ -221,9 +221,13 @@ class PatchManager:
         'patch_0_gpx_export': {
             'name': 'GPX Export',
             'file': 'smali_classes3/e8/j$a.smali',
+            'file_candidates': [
+                'smali_classes3/r8/j$a.smali',
+            ],
+            'file_glob': 'smali_classes*/**/j$a.smali',
             'type': 'smali_method',
-            'search': r'\.method public final e\(Ly0/c;Ls7/a;\)Z.*?\.end method',
-            'replace': '''.method public final e(Ly0/c;Ls7/a;)Z
+            'search': r'\.method public final e\(Ly0/c;(L[^;]+;)\)Z.*?const-string v0, "premiumSheetType".*?\.end method',
+            'replace': '''.method public final e(Ly0/c;\1)Z
     .locals 2
     const-string v0, "activity"
     invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
@@ -246,13 +250,17 @@ class PatchManager:
                 {
                     'file': 'smali_classes3/com/calimoto/calimoto/premium/featureview/ActivityFeatureView.smali',
                     'type': 'smali_block',
-                    'search': r'sget-object v2, Le8/j;->a:Le8/j\$a;\s*invoke-virtual \{v2\}, Le8/j\$a;->f\(\)Z\s*move-result v2\s*invoke-virtual \{v0\}, Lcom/calimoto/calimoto/premium/featureview/ActivityFeatureView;->q0\(\)Lcom/calimoto/calimoto/premium/featureview/a;',
-                    'replace': 'const/4 v2, 0x1\n    invoke-virtual {v0}, Lcom/calimoto/calimoto/premium/featureview/ActivityFeatureView;->q0()Lcom/calimoto/calimoto/premium/featureview/a;'
+                    'search': r'sget-object v2, L[^;]+/j;->a:L[^;]+/j\$a;\s*invoke-virtual \{v2\}, L[^;]+/j\$a;->f\(\)Z\s*move-result v2',
+                    'replace': 'const/4 v2, 0x1'
                 },
                 {
                     'file': 'smali_classes3/j7/r0.smali',
+                    'file_candidates': [
+                        'smali_classes3/s7/r0.smali',
+                    ],
+                    'file_glob': 'smali_classes*/**/r0.smali',
                     'type': 'smali_block',
-                    'search': r':goto_15\s*sget-object v7, Le8/j;->a:Le8/j\$a;\s*invoke-virtual \{v7\}, Le8/j\$a;->f\(\)Z\s*move-result v7\s*sget-object v8, Lkotlin/Unit;->a:Lkotlin/Unit;\s*invoke-interface \{v13, v5\}, Landroidx/compose/runtime/Composer;->changedInstance\(Ljava/lang/Object;\)Z',
+                    'search': r':goto_15\s*sget-object v7, L[^;]+/j;->a:L[^;]+/j\$a;\s*invoke-virtual \{v7\}, L[^;]+/j\$a;->f\(\)Z\s*move-result v7\s*sget-object v8, Lkotlin/Unit;->a:Lkotlin/Unit;\s*invoke-interface \{v13, v5\}, Landroidx/compose/runtime/Composer;->changedInstance\(Ljava/lang/Object;\)Z',
                     'replace': ':goto_15\n    const/4 v7, 0x1\n    sget-object v8, Lkotlin/Unit;->a:Lkotlin/Unit;\n    invoke-interface {v13, v5}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z'
                 },
             ],
@@ -262,41 +270,79 @@ class PatchManager:
     def __init__(self, working_dir: Path):
         self.working_dir = working_dir
 
+    def _resolve_candidate_files(self, operation: dict[str, str]) -> list[Path]:
+        """Resolve primary, fallback and glob candidate files for one operation."""
+        candidates: list[Path] = []
+
+        primary_file = operation.get('file')
+        if primary_file:
+            candidates.append(self.working_dir / primary_file)
+
+        for rel_path in operation.get('file_candidates', []):
+            candidates.append(self.working_dir / rel_path)
+
+        file_glob = operation.get('file_glob')
+        if file_glob:
+            candidates.extend(sorted(self.working_dir.glob(file_glob)))
+
+        # Keep insertion order while deduplicating
+        unique_candidates: list[Path] = []
+        seen: set[str] = set()
+        for candidate in candidates:
+            candidate_key = str(candidate)
+            if candidate_key in seen:
+                continue
+            seen.add(candidate_key)
+            unique_candidates.append(candidate)
+
+        return unique_candidates
+
     def _apply_single_operation(self, operation: dict[str, str], patch_name: str) -> tuple[bool, bool]:
         """Apply one regex replacement operation and report if it changed content."""
         ASCI_RED = "\033[91m"
         ASCI_WHITE = "\033[0m"
-        file_path = self.working_dir / operation['file']
 
-        if not file_path.exists():
-            logger.warning(f"{ASCI_RED}SKIP: Datei nicht gefunden: {operation['file']}{ASCI_WHITE}")
+        file_candidates = self._resolve_candidate_files(operation)
+        if not file_candidates:
+            logger.warning(f"{ASCI_RED}SKIP: Keine Datei-Kandidaten definiert{ASCI_WHITE}")
             return True, False
 
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-
             pattern = operation['search']
             flags = re.DOTALL if 'method' in operation.get('type', '') else 0
+            checked_files = 0
 
-            if not re.search(pattern, content, flags=flags):
-                logger.warning(f"{ASCI_RED}SKIP: Pattern nicht gefunden in {operation['file']}{ASCI_WHITE}")
-                return True, False
+            for file_path in file_candidates:
+                if not file_path.exists() or not file_path.is_file():
+                    continue
 
-            updated_content, replacements = re.subn(pattern, operation['replace'], content, flags=flags)
+                checked_files += 1
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
 
-            if replacements == 0:
-                logger.warning(f"SKIP: Keine Ersetzung in {operation['file']}")
-                return True, False
+                if not re.search(pattern, content, flags=flags):
+                    continue
 
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(updated_content)
+                updated_content, replacements = re.subn(pattern, operation['replace'], content, flags=flags)
+                if replacements == 0:
+                    continue
 
-            logger.info(f"OK: {patch_name} ({operation['file']})")
-            return True, True
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(updated_content)
+
+                rel_path = file_path.relative_to(self.working_dir)
+                logger.info(f"OK: {patch_name} ({rel_path})")
+                return True, True
+
+            display_file = operation.get('file') or 'n/a'
+            if checked_files == 0:
+                logger.warning(f"{ASCI_RED}SKIP: Datei nicht gefunden: {display_file}{ASCI_WHITE}")
+            else:
+                logger.warning(f"{ASCI_RED}SKIP: Pattern nicht gefunden (geprüfte Dateien: {checked_files}){ASCI_WHITE}")
+            return True, False
 
         except Exception as e:
-            logger.error(f"ERROR in {operation['file']}: {str(e)}")
+            logger.error(f"ERROR in {operation.get('file', 'n/a')}: {str(e)}")
             return False, False
 
     def apply_patch(self, patch_name: str) -> tuple[bool, str]:

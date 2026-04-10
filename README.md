@@ -43,3 +43,20 @@ python calimoto_patcher.py
 - show errors in app
 - make everything english
 - delete old `apk` and `idsig`
+
+## Manual Patch
+```properties
+apktool d calimoto.apk -o calimoto_work
+
+# then manualyly patch
+# -> patches are in the Python class: "PatchManager"
+
+apktool b -o calimoto-modified.apk calimoto_app
+
+# one time
+# keytool -genkeypair -v -keystore mein-key.keystore -alias meinalias -keyalg RSA -keysize 2048 -validity 10000
+
+apksigner sign --ks mein-key.keystore --ks-key-alias meinalias calimoto-modified.apk
+
+apksigner verify calimoto-modified.apk
+```
