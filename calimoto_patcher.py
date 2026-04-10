@@ -234,53 +234,91 @@ class PatchManager:
 .end method'''
         },
         'patch_1_xml_config': {
-            'name': 'Remote Config',
+            'name': 'Premium Popup Ad',
             'file': 'res/xml/remote_config_defaults.xml',
             'type': 'xml_value',
             'search': r'<key>skipPaywallInfoPercentAndroid</key>\s*<value>0\.5</value>',
             'replace': '<key>skipPaywallInfoPercentAndroid</key>\n<value>1.0</value>'
+        },
+        'patch_2_navigation_unlock': {
+            'name': 'Navigation Unlock',
+            'operations': [
+                {
+                    'file': 'smali_classes3/com/calimoto/calimoto/premium/featureview/ActivityFeatureView.smali',
+                    'type': 'smali_block',
+                    'search': r'sget-object v2, Le8/j;->a:Le8/j\$a;\s*invoke-virtual \{v2\}, Le8/j\$a;->f\(\)Z\s*move-result v2\s*invoke-virtual \{v0\}, Lcom/calimoto/calimoto/premium/featureview/ActivityFeatureView;->q0\(\)Lcom/calimoto/calimoto/premium/featureview/a;',
+                    'replace': 'const/4 v2, 0x1\n    invoke-virtual {v0}, Lcom/calimoto/calimoto/premium/featureview/ActivityFeatureView;->q0()Lcom/calimoto/calimoto/premium/featureview/a;'
+                },
+                {
+                    'file': 'smali_classes3/j7/r0.smali',
+                    'type': 'smali_block',
+                    'search': r':goto_15\s*sget-object v7, Le8/j;->a:Le8/j\$a;\s*invoke-virtual \{v7\}, Le8/j\$a;->f\(\)Z\s*move-result v7\s*sget-object v8, Lkotlin/Unit;->a:Lkotlin/Unit;\s*invoke-interface \{v13, v5\}, Landroidx/compose/runtime/Composer;->changedInstance\(Ljava/lang/Object;\)Z',
+                    'replace': ':goto_15\n    const/4 v7, 0x1\n    sget-object v8, Lkotlin/Unit;->a:Lkotlin/Unit;\n    invoke-interface {v13, v5}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z'
+                },
+            ],
         },
     }
 
     def __init__(self, working_dir: Path):
         self.working_dir = working_dir
 
-    def apply_patch(self, patch_name: str) -> tuple[bool, str]:
-        if patch_name not in self.PATCH_DEFINITIONS:
-            return False, f"Patch nicht definiert"
-
-        patch = self.PATCH_DEFINITIONS[patch_name]
-        file_path = self.working_dir / patch['file']
-
-        logger.info(f"Patch: {patch['name']}")
+    def _apply_single_operation(self, operation: dict[str, str], patch_name: str) -> tuple[bool, bool]:
+        """Apply one regex replacement operation and report if it changed content."""
+        ASCI_RED = "\033[91m"
+        ASCI_WHITE = "\033[0m"
+        file_path = self.working_dir / operation['file']
 
         if not file_path.exists():
-            msg = f"Datei nicht gefunden: {patch['file']}"
-            logger.warning(f"SKIP: {msg}")
-            return True, f"SKIP: {patch['name']}"
+            logger.warning(f"{ASCI_RED}SKIP: Datei nicht gefunden: {operation['file']}{ASCI_WHITE}")
+            return True, False
 
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
 
-            pattern = patch['search']
-            flags = re.DOTALL if 'method' in patch['type'] else 0
+            pattern = operation['search']
+            flags = re.DOTALL if 'method' in operation.get('type', '') else 0
 
             if not re.search(pattern, content, flags=flags):
-                logger.warning(f"Pattern nicht gefunden in {patch['file']}")
-                return True, f"SKIP: {patch['name']}"
+                logger.warning(f"{ASCI_RED}SKIP: Pattern nicht gefunden in {operation['file']}{ASCI_WHITE}")
+                return True, False
 
-            content = re.sub(pattern, patch['replace'], content, flags=flags)
+            updated_content, replacements = re.subn(pattern, operation['replace'], content, flags=flags)
+
+            if replacements == 0:
+                logger.warning(f"SKIP: Keine Ersetzung in {operation['file']}")
+                return True, False
 
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
+                f.write(updated_content)
 
+            logger.info(f"OK: {patch_name} ({operation['file']})")
+            return True, True
+
+        except Exception as e:
+            logger.error(f"ERROR in {operation['file']}: {str(e)}")
+            return False, False
+
+    def apply_patch(self, patch_name: str) -> tuple[bool, str]:
+        if patch_name not in self.PATCH_DEFINITIONS:
+            return False, f"Patch nicht definiert"
+
+        patch = self.PATCH_DEFINITIONS[patch_name]
+        logger.info(f"Patch: {patch['name']}")
+        operations = patch.get('operations', [patch])
+        applied_any = False
+
+        for operation in operations:
+            success, applied = self._apply_single_operation(operation, patch['name'])
+            if not success:
+                return False, f"ERROR: {patch['name']}"
+            applied_any = applied_any or applied
+
+        if applied_any:
             logger.info(f"OK: {patch['name']}")
             return True, f"OK: {patch['name']}"
 
-        except Exception as e:
-            logger.error(f"ERROR: {str(e)}")
-            return False, f"ERROR: {patch['name']}"
+        return True, f"SKIP: {patch['name']}"
 
     def apply_all(self, patches: list[str]) -> dict[str, tuple[bool, str]]:
         results = {}
