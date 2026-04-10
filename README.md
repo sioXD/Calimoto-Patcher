@@ -40,6 +40,6 @@ python calimoto_patcher.py
 ```
 
 ### TODOs
-- better error detection
+- show errors in app
 - make everything english
 - delete old `apk` and `idsig`
