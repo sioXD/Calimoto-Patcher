@@ -30,7 +30,7 @@ apt-get install -y default-jdk apktool android-sdk-build-tools
 brew install openjdk apktool android-sdk
 ```
 
-# start python script
+## start python script
 
 ```properties
 # install dependencies
@@ -39,7 +39,9 @@ pip install PySide6
 python calimoto_patcher.py
 ```
 
-### TODOs
+---
+
+## TODOs
 - show errors in app
 - make everything english
 - delete old `apk` and `idsig`

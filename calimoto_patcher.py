@@ -165,6 +165,10 @@ class ToolFinder:
         for name in ['apktool.jar', 'apktool', 'apktool.bat']:
             path = ToolFinder.find_in_path(name)
             if path:
+                if name != 'apktool.jar':
+                    sibling_jar = Path(path).with_name('apktool.jar')
+                    if sibling_jar.exists():
+                        return str(sibling_jar)
                 return path
 
         common_paths = [
@@ -227,7 +231,7 @@ class PatchManager:
             'file_glob': 'smali_classes*/**/j$a.smali',
             'type': 'smali_method',
             'search': r'\.method public final e\(Ly0/c;(L[^;]+;)\)Z.*?const-string v0, "premiumSheetType".*?\.end method',
-            'replace': '''.method public final e(Ly0/c;\1)Z
+            'replace': r'''.method public final e(Ly0/c;\g<1>)Z
     .locals 2
     const-string v0, "activity"
     invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
@@ -478,6 +482,21 @@ class APKWorker:
         else:
             return [self.apktool] + list(args)
 
+    @staticmethod
+    def _contains_apktool_error(output: str) -> bool:
+        """Detect apktool failures that can still return 0 on some wrappers."""
+        if not output:
+            return False
+
+        markers = [
+            'AndrolibException',
+            'brut.androlib.exceptions',
+            'Could not smali file',
+            'Error for input',
+            'Exception in thread "main"',
+        ]
+        return any(marker in output for marker in markers)
+
     def decompile(self, apk_path: str, output_dir: str) -> tuple[bool, str]:
         logger.info(f"Dekompiliere: {apk_path}")
         try:
@@ -488,12 +507,12 @@ class APKWorker:
             cmd = self._prepare_apktool_cmd('d', '-f', apk_path, '-o', output_dir)
             result = self._run_command(cmd, timeout=300)
 
-            if result.returncode == 0:
+            if result.returncode == 0 and not self._contains_apktool_error(result.stdout) and Path(output_dir).exists():
                 logger.info("Dekompilierung OK")
                 return True, "OK"
             else:
-                logger.error(f"apktool returned {result.returncode}")
-                return False, f"apktool Fehler: Return Code {result.returncode}"
+                logger.error(f"apktool decompile failed (rc={result.returncode})")
+                return False, f"apktool Fehler: Dekompilierung fehlgeschlagen (rc={result.returncode})"
 
         except subprocess.TimeoutExpired:
             logger.error("TIMEOUT: apktool-Dekompilierung hat zu lange gedauert")
@@ -511,12 +530,14 @@ class APKWorker:
             cmd = self._prepare_apktool_cmd('b', '-o', output_apk, apk_dir)
             result = self._run_command(cmd, timeout=600)
 
-            if result.returncode == 0:
+            if result.returncode == 0 and not self._contains_apktool_error(result.stdout) and Path(output_apk).exists():
                 logger.info("Rebuild OK")
                 return True, "OK"
             else:
-                logger.error(f"apktool returned {result.returncode}")
-                return False, f"apktool Fehler: Return Code {result.returncode}"
+                logger.error(f"apktool rebuild failed (rc={result.returncode})")
+                if not Path(output_apk).exists():
+                    return False, "apktool Fehler: Output-APK wurde nicht erstellt"
+                return False, f"apktool Fehler: Rebuild fehlgeschlagen (rc={result.returncode})"
         except subprocess.TimeoutExpired:
             logger.error("TIMEOUT: apktool-Rebuild hat zu lange gedauert")
             return False, "Timeout: Rebuild zu lange"
