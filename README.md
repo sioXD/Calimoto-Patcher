@@ -38,3 +38,7 @@ pip install PySide6
 
 python calimoto_patcher.py
 ```
+
+### TODOs
+- better error detection
+- make everything english
