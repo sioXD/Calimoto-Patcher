@@ -44,7 +44,6 @@ python calimoto_patcher.py
 ## TODOs
 - show errors in app
 - make everything english
-- delete old `apk` and `idsig`
 
 ## Manual Patch
 ```properties

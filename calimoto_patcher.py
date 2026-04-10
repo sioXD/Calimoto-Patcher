@@ -870,6 +870,9 @@ class MainWindow(QMainWindow):
         self.setup_ui()
         self.setStyleSheet(QSS_STYLESHEET)
 
+        # Cleanup old APKs on startup
+        self.cleanup_old_apks()
+
         # Auto-check tools on startup
         self.check_tools()
 
@@ -877,11 +880,30 @@ class MainWindow(QMainWindow):
     def center(self):
         screen = self.screen() or QGuiApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
-        
+
         x = screen_geometry.x() + (screen_geometry.width() - self.width()) // 2
         y = screen_geometry.y() + (screen_geometry.height() - self.height()) // 2
-        
+
         self.move(x, y)
+
+    def cleanup_old_apks(self):
+        """Delete old patched APKs and signature files on startup"""
+        script_dir = Path(__file__).parent.resolve()
+
+        patterns = ['patched-*.apk', 'patched-*.idsig']
+        deleted_count = 0
+
+        for pattern in patterns:
+            for file_path in script_dir.glob(pattern):
+                try:
+                    file_path.unlink()
+                    logger.info(f"Deleted old APK: {file_path.name}")
+                    deleted_count += 1
+                except Exception as e:
+                    logger.warning(f"Could not delete {file_path.name}: {e}")
+
+        if deleted_count > 0:
+            logger.info(f"Cleanup: Removed {deleted_count} old APK files")
 
     def setup_ui(self):
         """Setup main layout"""
