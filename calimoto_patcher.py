@@ -222,8 +222,8 @@ class ToolFinder:
 class PatchManager:
     """Verwaltet Patches"""
     PATCH_DEFINITIONS = {
-        'patch_0_gpx_export': {
-            'name': 'GPX Export',
+        'patch_0_navigation_unlock': {
+            'name': 'Navigation Unlock',
             'file': 'smali_classes3/e8/j$a.smali',
             'file_candidates': [
                 'smali_classes3/r8/j$a.smali',
@@ -247,24 +247,7 @@ class PatchManager:
             'type': 'xml_value',
             'search': r'<key>skipPaywallInfoPercentAndroid</key>\s*<value>0\.5</value>',
             'replace': '<key>skipPaywallInfoPercentAndroid</key>\n<value>1.0</value>'
-        },
-        'patch_2_navigation_unlock': {
-            'name': 'Navigation & Premium Features Unlock',
-            'operations': [
-                {
-                    'file': 'smali_classes4/md/d.smali',
-                    'type': 'smali_block',
-                    'search': r'\.method public final L0\(\)Z\s*\.locals 3\s*invoke-static \{\}, Lcom/calimoto/calimoto/parse/user/a;->S\(\)Z\s*move-result v0\s*if-nez v0, :cond_1',
-                    'replace': '.method public final L0()Z\n    .locals 3\n    const/4 v0, 0x1\n    # Always allow'
-                },
-                {
-                    'file': 'smali_classes3/com/calimoto/calimoto/premium/featureview/ActivityFeatureView.smali',
-                    'type': 'smali_block',
-                    'search': r'sget-object v2, L[^;]+/j;->a:L[^;]+/j\$a;\s*invoke-virtual \{v2\}, L[^;]+/j\$a;->f\(\)Z\s*move-result v2',
-                    'replace': 'const/4 v2, 0x1'
-                },
-            ],
-        },
+        }
     }
 
     def __init__(self, working_dir: Path):
