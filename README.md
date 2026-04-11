@@ -41,9 +41,6 @@ python calimoto_patcher.py
 
 ---
 
-## TODOs
-- make everything english
-
 ## Manual Patch
 ```properties
 apktool d calimoto.apk -o calimoto_work

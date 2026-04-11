@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThread, Signal, QSize, QTimer, QObject
 from PySide6.QtGui import QColor, QFont, QGuiApplication
 
-# UTF-8 für Windows
+# UTF-8 for Windows
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 logging.basicConfig(
@@ -37,29 +37,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# .env Datei immer relativ zum Script-Verzeichnis laden/speichern
+# .env file always load/save relative to script directory
 ENV_FILE = Path(__file__).resolve().parent / '.calimoto-patcher.env'
 DEFAULT_KEYSTORE_FILE = Path(__file__).resolve().parent / 'calimoto.keystore'
 
 
 class KeystoreGenerator:
-    """Erstelle Keystores mit automatischen Eingaben"""
+    """Create keystores with automatic inputs"""
 
     @staticmethod
     def generate_password(length: int = 16) -> str:
-        """Generiere zufälliges Passwort"""
+        """Generate random password"""
         alphabet = string.ascii_letters + string.digits + "_-"
         password = ''.join(secrets.choice(alphabet) for i in range(length))
         return password
 
     @staticmethod
-    def create_keystore(keystore_path: str, alias: str = "meinalias") -> tuple[bool, str, str]:
-        """Erstelle Keystore mit automatischen Inputs"""
+    def create_keystore(keystore_path: str, alias: str = "myalias") -> tuple[bool, str, str]:
+        """Create keystore with automatic inputs"""
         password = KeystoreGenerator.generate_password()
 
-        logger.info(f"Erstelle Keystore: {keystore_path}")
+        logger.info(f"Creating keystore: {keystore_path}")
         logger.info(f"Alias: {alias}")
-        logger.info(f"Passwort generiert: {'*' * len(password)}")
+        logger.info(f"Password generated: {'*' * len(password)}")
 
         try:
             cmd = [
@@ -86,49 +86,49 @@ class KeystoreGenerator:
                     logger.info(line)
 
             if result.returncode == 0:
-                logger.info("Keystore erfolgreich erstellt")
+                logger.info("Keystore created successfully")
                 return True, password, None
             else:
                 error = result.stderr or result.stdout
-                logger.error(f"keytool Fehler: {error}")
+                logger.error(f"keytool error: {error}")
                 return False, None, error
 
         except Exception as e:
-            logger.error(f"Fehler: {str(e)}")
+            logger.error(f"Error: {str(e)}")
             return False, None, str(e)
 
 
 class EnvConfig:
-    """Verwaltet .env Konfiguration"""
+    """Manages .env configuration"""
 
     @staticmethod
     def load() -> dict[str, str]:
-        """Lade .env Datei"""
+        """Load .env file"""
         if not ENV_FILE.exists():
             return {}
 
         try:
             with open(ENV_FILE, 'r') as f:
                 data = json.load(f)
-            logger.info(f"Config geladen: {ENV_FILE}")
+            logger.info(f"Config loaded: {ENV_FILE}")
             return data
         except Exception as e:
-            logger.error(f"Fehler beim Laden von .env: {e}")
+            logger.error(f"Error loading .env: {e}")
             return {}
 
     @staticmethod
     def save(data: dict[str, str]):
-        """Speichere .env Datei"""
+        """Save .env file"""
         try:
             with open(ENV_FILE, 'w') as f:
                 json.dump(data, f, indent=2)
-            logger.info(f"Config gespeichert: {ENV_FILE}")
+            logger.info(f"Config saved: {ENV_FILE}")
         except Exception as e:
-            logger.error(f"Fehler beim Speichern von .env: {e}")
+            logger.error(f"Error saving .env: {e}")
 
     @staticmethod
     def exists() -> bool:
-        """Prüfe ob .env existiert"""
+        """Check if .env exists"""
         return ENV_FILE.exists()
 
     @staticmethod
@@ -139,11 +139,11 @@ class EnvConfig:
 
 
 class ToolFinder:
-    """Findet apktool und apksigner überall"""
+    """Finds apktool and apksigner everywhere"""
 
     @staticmethod
     def find_in_path(tool_name: str) -> str | None:
-        """Suche Tool in System PATH"""
+        """Search tool in system PATH"""
         try:
             if sys.platform == 'win32':
                 result = subprocess.run(['where', tool_name],
@@ -161,7 +161,7 @@ class ToolFinder:
 
     @staticmethod
     def find_apktool() -> str | None:
-        """Finde apktool - bevorzuge JAR um pause-Probleme zu vermeiden"""
+        """Find apktool - prefer JAR to avoid pause issues"""
         for name in ['apktool.jar', 'apktool', 'apktool.bat']:
             path = ToolFinder.find_in_path(name)
             if path:
@@ -189,7 +189,7 @@ class ToolFinder:
 
     @staticmethod
     def find_apksigner() -> str | None:
-        """Finde apksigner"""
+        """Find apksigner"""
         for name in ['apksigner', 'apksigner.bat']:
             path = ToolFinder.find_in_path(name)
             if path:
@@ -220,7 +220,7 @@ class ToolFinder:
 
 
 class PatchManager:
-    """Verwaltet Patches"""
+    """Manages patches"""
     PATCH_DEFINITIONS = {
         'patch_0_navigation_unlock': {
             'name': 'Navigation Unlock',
@@ -282,12 +282,12 @@ class PatchManager:
 
     def _apply_single_operation(self, operation: dict[str, str], patch_name: str) -> tuple[bool, bool, str]:
         """Apply one regex replacement operation and report if it changed content. Returns (success, applied, error_msg)."""
-        ASCI_RED = "\033[91m"
-        ASCI_WHITE = "\033[0m"
+        ANSI_RED = "\033[91m"
+        ANSI_WHITE = "\033[0m"
 
         file_candidates = self._resolve_candidate_files(operation)
         if not file_candidates:
-            msg = f"{ASCI_RED}SKIP: Keine Datei-Kandidaten definiert{ASCI_WHITE}"
+            msg = f"{ANSI_RED}SKIP: No file candidates defined{ANSI_WHITE}"
             logger.warning(msg)
             return True, False, msg
 
@@ -320,9 +320,9 @@ class PatchManager:
 
             display_file = operation.get('file') or 'n/a'
             if checked_files == 0:
-                msg = f"{ASCI_RED}SKIP: Datei nicht gefunden: {display_file}{ASCI_WHITE}"
+                msg = f"{ANSI_RED}SKIP: File not found: {display_file}{ANSI_WHITE}"
             else:
-                msg = f"{ASCI_RED}SKIP: Pattern nicht gefunden (geprüfte Dateien: {checked_files}){ASCI_WHITE}"
+                msg = f"{ANSI_RED}SKIP: Pattern not found (files checked: {checked_files}){ANSI_WHITE}"
             logger.warning(msg)
             return True, False, msg
 
@@ -333,7 +333,7 @@ class PatchManager:
 
     def apply_patch(self, patch_name: str) -> tuple[bool, str]:
         if patch_name not in self.PATCH_DEFINITIONS:
-            return False, f"Patch nicht definiert"
+            return False, f"Patch not defined"
 
         patch = self.PATCH_DEFINITIONS[patch_name]
         logger.info(f"Patch: {patch['name']}")
@@ -368,7 +368,7 @@ class PatchManager:
 
 
 class APKWorker:
-    """APK-Operationen"""
+    """APK operations"""
 
     def __init__(self, apktool_path: str, apksigner_path: str, log_callback=None, stop_event: Event | None = None):
         self.apktool = apktool_path
@@ -404,9 +404,9 @@ class APKWorker:
 
     def _run_command(self, cmd: list[str], timeout: int) -> subprocess.CompletedProcess:
         if self.stop_event.is_set():
-            raise InterruptedError("Abgebrochen")
+            raise InterruptedError("Cancelled")
 
-        logger.info(f"Kommando: {' '.join(cmd)}")
+        logger.info(f"Command: {' '.join(cmd)}")
         process = subprocess.Popen(
             cmd,
             stdin=subprocess.DEVNULL,
@@ -441,7 +441,7 @@ class APKWorker:
                 if self.stop_event.is_set():
                     self.request_stop()
                     reader_thread.join(timeout=1)
-                    raise InterruptedError("Abgebrochen")
+                    raise InterruptedError("Cancelled")
 
                 if time.monotonic() - start_time > timeout:
                     process.kill()
@@ -465,7 +465,7 @@ class APKWorker:
                     self._current_process = None
 
     def _prepare_apktool_cmd(self, *args) -> list[str]:
-        """Bereite apktool-Kommando vor - handle .jar und .bat unterschiedlich"""
+        """Prepare apktool command - handle .jar and .bat differently"""
         if self.apktool.endswith('.jar'):
             return ['java', '-jar', self.apktool] + list(args)
         else:
@@ -487,34 +487,34 @@ class APKWorker:
         return any(marker in output for marker in markers)
 
     def decompile(self, apk_path: str, output_dir: str) -> tuple[bool, str]:
-        logger.info(f"Dekompiliere: {apk_path}")
+        logger.info(f"Decompiling: {apk_path}")
         try:
             if Path(output_dir).exists():
-                logger.info(f"Lösche alten Output: {output_dir}")
+                logger.info(f"Deleting old output: {output_dir}")
                 shutil.rmtree(output_dir)
 
             cmd = self._prepare_apktool_cmd('d', '-f', apk_path, '-o', output_dir)
             result = self._run_command(cmd, timeout=300)
 
             if result.returncode == 0 and not self._contains_apktool_error(result.stdout) and Path(output_dir).exists():
-                logger.info("Dekompilierung OK")
+                logger.info("Decompile OK")
                 return True, "OK"
             else:
                 logger.error(f"apktool decompile failed (rc={result.returncode})")
-                return False, f"apktool Fehler: Dekompilierung fehlgeschlagen (rc={result.returncode})"
+                return False, f"apktool error: Decompile failed (rc={result.returncode})"
 
         except subprocess.TimeoutExpired:
-            logger.error("TIMEOUT: apktool-Dekompilierung hat zu lange gedauert")
-            return False, "Timeout: Dekompilierung zu lange"
+            logger.error("TIMEOUT: apktool decompile took too long")
+            return False, "Timeout: Decompile took too long"
         except InterruptedError:
-            logger.warning("Dekompilierung abgebrochen")
-            return False, "Abgebrochen"
+            logger.warning("Decompile cancelled")
+            return False, "Cancelled"
         except Exception as e:
             logger.error(f"Exception: {str(e)}")
             return False, str(e)
 
     def rebuild(self, apk_dir: str, output_apk: str) -> tuple[bool, str]:
-        logger.info(f"Baue APK: {apk_dir}")
+        logger.info(f"Building APK: {apk_dir}")
         try:
             cmd = self._prepare_apktool_cmd('b', '-o', output_apk, apk_dir)
             result = self._run_command(cmd, timeout=600)
@@ -525,20 +525,20 @@ class APKWorker:
             else:
                 logger.error(f"apktool rebuild failed (rc={result.returncode})")
                 if not Path(output_apk).exists():
-                    return False, "apktool Fehler: Output-APK wurde nicht erstellt"
-                return False, f"apktool Fehler: Rebuild fehlgeschlagen (rc={result.returncode})"
+                    return False, "apktool error: Output APK was not created"
+                return False, f"apktool error: Rebuild failed (rc={result.returncode})"
         except subprocess.TimeoutExpired:
-            logger.error("TIMEOUT: apktool-Rebuild hat zu lange gedauert")
-            return False, "Timeout: Rebuild zu lange"
+            logger.error("TIMEOUT: apktool rebuild took too long")
+            return False, "Timeout: Rebuild took too long"
         except InterruptedError:
-            logger.warning("Rebuild abgebrochen")
-            return False, "Abgebrochen"
+            logger.warning("Rebuild cancelled")
+            return False, "Cancelled"
         except Exception as e:
             logger.error(f"Exception: {str(e)}")
             return False, str(e)
 
     def sign(self, apk_path: str, keystore: str, alias: str, password: str = None) -> tuple[bool, str]:
-        logger.info(f"Signiere APK")
+        logger.info(f"Signing APK")
         try:
             cmd = [self.apksigner, 'sign', '--ks', keystore, '--ks-key-alias', alias]
 
@@ -546,29 +546,29 @@ class APKWorker:
                 cmd.extend(['--ks-pass', f'pass:{password}', '--key-pass', f'pass:{password}'])
 
             cmd.append(apk_path)
-            logger.info(f"apksigner Kommando: sign --ks [keystore] --ks-key-alias {alias} --ks-pass pass:*** {apk_path}")
+            logger.info(f"apksigner command: sign --ks [keystore] --ks-key-alias {alias} --ks-pass pass:*** {apk_path}")
 
             result = self._run_command(cmd, timeout=60)
 
             if result.returncode == 0:
-                logger.info("Signierung OK")
+                logger.info("Signing OK")
                 return True, "OK"
             else:
                 logger.error(f"apksigner returned {result.returncode}")
-                return False, f"apksigner Fehler: Return Code {result.returncode}"
+                return False, f"apksigner error: Return code {result.returncode}"
         except subprocess.TimeoutExpired:
-            logger.error("TIMEOUT: Signierung hat zu lange gedauert")
-            return False, "Timeout: Signierung zu lange"
+            logger.error("TIMEOUT: Signing took too long")
+            return False, "Timeout: Signing took too long"
         except InterruptedError:
-            logger.warning("Signierung abgebrochen")
-            return False, "Abgebrochen"
+            logger.warning("Signing cancelled")
+            return False, "Cancelled"
         except Exception as e:
             logger.error(f"Exception: {str(e)}")
             return False, str(e)
 
 
 class APKWorkerThread(QThread):
-    """QThread für APK-Workflow mit Signal-basiertem Logging"""
+    """QThread for APK workflow with signal-based logging"""
     log_message = Signal(str)
     patch_status = Signal(str, bool, str)  # patch_id, success, message
     workflow_finished = Signal(bool, str)
@@ -586,7 +586,7 @@ class APKWorkerThread(QThread):
     def request_stop(self):
         """Request workflow stop and forward it to active command worker."""
         self.stop_event.set()
-        self.log_message.emit("Stop angefordert...")
+        self.log_message.emit("Stop requested...")
         if self.worker:
             self.worker.request_stop()
 
@@ -600,7 +600,7 @@ class APKWorkerThread(QThread):
             self.log_message.emit("=" * 60)
 
             if self._was_stopped():
-                self.workflow_finished.emit(False, "Abgebrochen")
+                self.workflow_finished.emit(False, "Cancelled")
                 return
 
             keystore_path = self.config.get('keystore_path')
@@ -608,14 +608,14 @@ class APKWorkerThread(QThread):
             keystore_password = self.config.get('keystore_password')
 
             if not keystore_path or not Path(keystore_path).exists():
-                self.log_message.emit("Keystore nicht gefunden!")
+                self.log_message.emit("Keystore not found!")
                 self.workflow_finished.emit(False, "Keystore not found")
                 return
 
             work_dir = Path(self.apk_path).parent / "calimoto_work"
             output_apk = Path(self.apk_path).parent / f"patched-{datetime.now().strftime('%Y%m%d-%H%M%S')}.apk"
 
-            self.log_message.emit("\n[1/6] Dekompiliere APK...")
+            self.log_message.emit("\n[1/6] Decompiling APK...")
             self.worker = APKWorker(
                 self.apktool_path,
                 self.apksigner_path,
@@ -625,26 +625,26 @@ class APKWorkerThread(QThread):
             success, msg = self.worker.decompile(self.apk_path, str(work_dir))
 
             if not success:
-                if msg == "Abgebrochen":
-                    self.log_message.emit("Workflow abgebrochen.")
-                    self.workflow_finished.emit(False, "Abgebrochen")
+                if msg == "Cancelled":
+                    self.log_message.emit("Workflow cancelled.")
+                    self.workflow_finished.emit(False, "Cancelled")
                     return
-                self.log_message.emit(f"Fehler: {msg}")
+                self.log_message.emit(f"Error: {msg}")
                 self.workflow_finished.emit(False, msg)
                 return
 
             if self._was_stopped():
-                self.log_message.emit("Workflow abgebrochen.")
-                self.workflow_finished.emit(False, "Abgebrochen")
+                self.log_message.emit("Workflow cancelled.")
+                self.workflow_finished.emit(False, "Cancelled")
                 return
 
-            self.log_message.emit("\n[2/6] Wende Patches an...")
+            self.log_message.emit("\n[2/6] Applying patches...")
             patches = [name for name, var in self.patch_vars.items() if var.isChecked()]
             patcher = PatchManager(work_dir)
             for patch_name in patches:
                 if self._was_stopped():
-                    self.log_message.emit("Workflow abgebrochen.")
-                    self.workflow_finished.emit(False, "Abgebrochen")
+                    self.log_message.emit("Workflow cancelled.")
+                    self.workflow_finished.emit(False, "Cancelled")
                     return
                 success, msg = patcher.apply_patch(patch_name)
                 self.log_message.emit(msg)
@@ -654,50 +654,50 @@ class APKWorkerThread(QThread):
                 self.patch_status.emit(patch_name, is_success, msg)
 
                 if not success:
-                    self.log_message.emit(f"Fehler: {msg}")
+                    self.log_message.emit(f"Error: {msg}")
                     self.workflow_finished.emit(False, msg)
                     return
 
-            self.log_message.emit("\n[3/6] Baue APK...")
+            self.log_message.emit("\n[3/6] Building APK...")
             success, msg = self.worker.rebuild(str(work_dir), str(output_apk))
 
             if not success:
-                if msg == "Abgebrochen":
-                    self.log_message.emit("Workflow abgebrochen.")
-                    self.workflow_finished.emit(False, "Abgebrochen")
+                if msg == "Cancelled":
+                    self.log_message.emit("Workflow cancelled.")
+                    self.workflow_finished.emit(False, "Cancelled")
                     return
-                self.log_message.emit(f"Fehler: {msg}")
+                self.log_message.emit(f"Error: {msg}")
                 self.workflow_finished.emit(False, msg)
                 return
 
             if self._was_stopped():
-                self.log_message.emit("Workflow abgebrochen.")
-                self.workflow_finished.emit(False, "Abgebrochen")
+                self.log_message.emit("Workflow cancelled.")
+                self.workflow_finished.emit(False, "Cancelled")
                 return
 
-            self.log_message.emit("\n[4/6] Signiere APK...")
+            self.log_message.emit("\n[4/6] Signing APK...")
             success, msg = self.worker.sign(str(output_apk), keystore_path, alias, keystore_password)
 
             if not success:
-                if msg == "Abgebrochen":
-                    self.log_message.emit("Workflow abgebrochen.")
-                    self.workflow_finished.emit(False, "Abgebrochen")
+                if msg == "Cancelled":
+                    self.log_message.emit("Workflow cancelled.")
+                    self.workflow_finished.emit(False, "Cancelled")
                     return
-                self.log_message.emit(f"Fehler: {msg}")
+                self.log_message.emit(f"Error: {msg}")
                 self.workflow_finished.emit(False, msg)
                 return
 
             self.log_message.emit("\n[5/6] Cleanup...")
             shutil.rmtree(work_dir, ignore_errors=True)
 
-            self.log_message.emit("\n[6/6] FERTIG!")
+            self.log_message.emit("\n[6/6] DONE!")
             self.log_message.emit(f"Output: {output_apk}")
             self.log_message.emit("=" * 60)
 
             self.workflow_finished.emit(True, str(output_apk))
 
         except Exception as e:
-            self.log_message.emit(f"Fehler: {str(e)}")
+            self.log_message.emit(f"Error: {str(e)}")
             self.workflow_finished.emit(False, str(e))
         finally:
             self.worker = None
@@ -823,7 +823,7 @@ QScrollBar::handle:vertical:hover {
 
 
 class MainWindow(QMainWindow):
-    """Moderne PySide6 UI mit Material Design 3"""
+    """Modern PySide6 UI with Material Design 3"""
 
     def __init__(self):
         super().__init__()
@@ -831,7 +831,7 @@ class MainWindow(QMainWindow):
         self.resize(1000, 600)
         self.center()
 
-        # Farben (Material Design 3)
+        # Colors (Material Design 3)
         self.colors = {
             'surface': '#131313',
             'surface_dim': '#131313',
@@ -877,7 +877,7 @@ class MainWindow(QMainWindow):
         # Auto-check tools on startup
         self.check_tools()
 
-    
+
     def center(self):
         screen = self.screen() or QGuiApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
@@ -1091,7 +1091,7 @@ class MainWindow(QMainWindow):
 
     def check_tools(self):
         """Check for required tools"""
-        logger.info("Dependency-Check gestartet...")
+        logger.info("Dependency check started...")
 
         self.config = EnvConfig.load()
 
@@ -1113,15 +1113,15 @@ class MainWindow(QMainWindow):
         if self.java_ok:
             keystore_ok, keystore_msg = self._ensure_keystore_exists(strict=False)
             if not keystore_ok:
-                logger.warning(f"Keystore Auto-Create bei Dependency-Check fehlgeschlagen: {keystore_msg}")
+                logger.warning(f"Keystore auto-create during dependency check failed: {keystore_msg}")
             elif keystore_msg == "CREATED":
-                logger.info("Keystore wurde beim Dependency-Check automatisch erstellt")
+                logger.info("Keystore was automatically created during dependency check")
             elif keystore_msg == "EXISTS":
-                logger.info("Keystore vorhanden")
+                logger.info("Keystore exists")
         else:
-            logger.info("Keystore-Check übersprungen: Java fehlt")
+            logger.info("Keystore check skipped: Java not found")
 
-        logger.info("Dependency-Check abgeschlossen")
+        logger.info("Dependency check completed")
 
         self.refresh_run_button_state()
 
@@ -1180,7 +1180,7 @@ class MainWindow(QMainWindow):
     def stop_workflow(self):
         """Request graceful stop for running patch process."""
         if not self.is_running or not self.worker_thread:
-            QMessageBox.information(self, "Stop", "Kein laufender Patch-Prozess.")
+            QMessageBox.information(self, "Stop", "No running patch process.")
             return
 
         if self.control_stop_btn:
@@ -1190,7 +1190,7 @@ class MainWindow(QMainWindow):
         self.status_label.setStyleSheet(
             f"color: {self.colors['primary']}; background-color: transparent;"
         )
-        logger.warning("Stop durch Benutzer angefordert")
+        logger.warning("Stop requested by user")
         self.worker_thread.request_stop()
 
     def _update_start_button_loading(self):
@@ -1234,7 +1234,7 @@ class MainWindow(QMainWindow):
         """Create missing keystore automatically from env configuration."""
         self.config = self.config or {}
         keystore_path = self.config.get('keystore_path', '')
-        alias = self.config.get('alias') or 'meinalias'
+        alias = self.config.get('alias') or 'myalias'
 
         if not keystore_path:
             if not strict:
@@ -1242,7 +1242,7 @@ class MainWindow(QMainWindow):
                 self.config['keystore_path'] = keystore_path
                 self.config['alias'] = alias
                 EnvConfig.save(self.config)
-                logger.info(f"Keystore-Pfad fehlt in Env - nutze Standardpfad: {keystore_path}")
+                logger.info(f"Keystore path missing in env - using default path: {keystore_path}")
             else:
                 return False, "Setup incomplete: keystore_path"
 
@@ -1250,7 +1250,7 @@ class MainWindow(QMainWindow):
         if keystore_file.exists():
             return True, "EXISTS"
 
-        logger.warning("Keystore fehlt - starte automatische Erstellung aus Env...")
+        logger.warning("Keystore missing - starting automatic creation from env...")
 
         try:
             keystore_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1265,7 +1265,7 @@ class MainWindow(QMainWindow):
         self.config['alias'] = alias
         self.config['keystore_password'] = generated_password
         EnvConfig.save(self.config)
-        logger.info("Keystore automatisch erstellt und Env aktualisiert")
+        logger.info("Keystore created automatically and env updated")
         return True, "CREATED"
 
     def run_workflow(self):
@@ -1331,8 +1331,8 @@ class MainWindow(QMainWindow):
 
         if success:
             QMessageBox.information(self, "Success", f"Patching completed!\n\n{message}")
-        elif message == "Abgebrochen":
-            QMessageBox.information(self, "Stopped", "Patching wurde abgebrochen.")
+        elif message == "Cancelled":
+            QMessageBox.information(self, "Stopped", "Patching was cancelled.")
         else:
             QMessageBox.critical(self, "Error", f"Patching failed: {message}")
 
