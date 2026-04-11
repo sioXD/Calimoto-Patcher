@@ -42,7 +42,6 @@ python calimoto_patcher.py
 ---
 
 ## TODOs
-- show errors in app
 - make everything english
 
 ## Manual Patch
