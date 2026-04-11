@@ -280,15 +280,16 @@ class PatchManager:
 
         return unique_candidates
 
-    def _apply_single_operation(self, operation: dict[str, str], patch_name: str) -> tuple[bool, bool]:
-        """Apply one regex replacement operation and report if it changed content."""
+    def _apply_single_operation(self, operation: dict[str, str], patch_name: str) -> tuple[bool, bool, str]:
+        """Apply one regex replacement operation and report if it changed content. Returns (success, applied, error_msg)."""
         ASCI_RED = "\033[91m"
         ASCI_WHITE = "\033[0m"
 
         file_candidates = self._resolve_candidate_files(operation)
         if not file_candidates:
-            logger.warning(f"{ASCI_RED}SKIP: Keine Datei-Kandidaten definiert{ASCI_WHITE}")
-            return True, False
+            msg = f"{ASCI_RED}SKIP: Keine Datei-Kandidaten definiert{ASCI_WHITE}"
+            logger.warning(msg)
+            return True, False, msg
 
         try:
             pattern = operation['search']
@@ -315,18 +316,20 @@ class PatchManager:
 
                 rel_path = file_path.relative_to(self.working_dir)
                 logger.info(f"OK: {patch_name} ({rel_path})")
-                return True, True
+                return True, True, ""
 
             display_file = operation.get('file') or 'n/a'
             if checked_files == 0:
-                logger.warning(f"{ASCI_RED}SKIP: Datei nicht gefunden: {display_file}{ASCI_WHITE}")
+                msg = f"{ASCI_RED}SKIP: Datei nicht gefunden: {display_file}{ASCI_WHITE}"
             else:
-                logger.warning(f"{ASCI_RED}SKIP: Pattern nicht gefunden (geprüfte Dateien: {checked_files}){ASCI_WHITE}")
-            return True, False
+                msg = f"{ASCI_RED}SKIP: Pattern nicht gefunden (geprüfte Dateien: {checked_files}){ASCI_WHITE}"
+            logger.warning(msg)
+            return True, False, msg
 
         except Exception as e:
-            logger.error(f"ERROR in {operation.get('file', 'n/a')}: {str(e)}")
-            return False, False
+            error_msg = f"ERROR in {operation.get('file', 'n/a')}: {str(e)}"
+            logger.error(error_msg)
+            return False, False, error_msg
 
     def apply_patch(self, patch_name: str) -> tuple[bool, str]:
         if patch_name not in self.PATCH_DEFINITIONS:
@@ -336,16 +339,23 @@ class PatchManager:
         logger.info(f"Patch: {patch['name']}")
         operations = patch.get('operations', [patch])
         applied_any = False
+        skip_messages = []
 
         for operation in operations:
-            success, applied = self._apply_single_operation(operation, patch['name'])
+            success, applied, error_msg = self._apply_single_operation(operation, patch['name'])
             if not success:
-                return False, f"ERROR: {patch['name']}"
+                return False, f"ERROR: {patch['name']} - {error_msg}"
+            if not applied and error_msg:
+                skip_messages.append(error_msg)
             applied_any = applied_any or applied
 
         if applied_any:
             logger.info(f"OK: {patch['name']}")
             return True, f"OK: {patch['name']}"
+
+        if skip_messages:
+            skip_msg = " | ".join(skip_messages)
+            return True, f"SKIP: {patch['name']} - {skip_msg}"
 
         return True, f"SKIP: {patch['name']}"
 
@@ -560,6 +570,7 @@ class APKWorker:
 class APKWorkerThread(QThread):
     """QThread für APK-Workflow mit Signal-basiertem Logging"""
     log_message = Signal(str)
+    patch_status = Signal(str, bool, str)  # patch_id, success, message
     workflow_finished = Signal(bool, str)
 
     def __init__(self, apk_path: str, patch_vars: dict, config: dict, apktool_path: str, apksigner_path: str):
@@ -636,6 +647,12 @@ class APKWorkerThread(QThread):
                     self.workflow_finished.emit(False, "Abgebrochen")
                     return
                 success, msg = patcher.apply_patch(patch_name)
+                self.log_message.emit(msg)
+
+                # Determine if patch was applied successfully or skipped
+                is_success = success and not msg.startswith("SKIP")
+                self.patch_status.emit(patch_name, is_success, msg)
+
                 if not success:
                     self.log_message.emit(f"Fehler: {msg}")
                     self.workflow_finished.emit(False, msg)
@@ -840,6 +857,7 @@ class MainWindow(QMainWindow):
         self.is_running = False
         self.config = EnvConfig.load()
         self.patch_vars = {}
+        self.patch_status_labels = {}
         self.worker_thread = None
         self.control_start_btn = None
         self.control_start_label = None
@@ -1008,10 +1026,23 @@ class MainWindow(QMainWindow):
         patches_layout.setSpacing(4)
 
         for patch_id, patch in PatchManager.PATCH_DEFINITIONS.items():
+            patch_row_layout = QHBoxLayout()
+            patch_row_layout.setSpacing(8)
+
             checkbox = QCheckBox(patch['name'].upper())
             checkbox.setChecked(True)
             self.patch_vars[patch_id] = checkbox
-            patches_layout.addWidget(checkbox)
+
+            status_label = QLabel("")
+            status_label.setFont(QFont("Inter", 9))
+            status_label.setStyleSheet(f"color: {self.colors['text_muted']}; background-color: transparent;")
+            self.patch_status_labels[patch_id] = status_label
+
+            patch_row_layout.addWidget(checkbox)
+            patch_row_layout.addStretch()
+            patch_row_layout.addWidget(status_label)
+
+            patches_layout.addLayout(patch_row_layout)
 
         layout.addLayout(patches_layout)
 
@@ -1255,6 +1286,11 @@ class MainWindow(QMainWindow):
             self.refresh_run_button_state()
             return
 
+        # Reset patch status labels
+        for patch_id, label in self.patch_status_labels.items():
+            label.setText("")
+            label.setStyleSheet(f"color: {self.colors['text_muted']}; background-color: transparent;")
+
         self._set_running_ui_state(True)
 
         # Create and start worker thread
@@ -1267,8 +1303,23 @@ class MainWindow(QMainWindow):
         )
 
         self.worker_thread.log_message.connect(self._on_log_message)
+        self.worker_thread.patch_status.connect(self._on_patch_status)
         self.worker_thread.workflow_finished.connect(self._on_workflow_finished)
         self.worker_thread.start()
+
+    def _on_patch_status(self, patch_id: str, success: bool, message: str):
+        """Handle patch status update"""
+        if patch_id not in self.patch_status_labels:
+            return
+
+        label = self.patch_status_labels[patch_id]
+
+        if success:
+            label.setText("✓ OK")
+            label.setStyleSheet(f"color: {self.colors['primary']}; background-color: transparent; font-weight: bold;")
+        else:
+            label.setText("✗ SKIP")
+            label.setStyleSheet(f"color: {self.colors['error']}; background-color: transparent; font-weight: bold;")
 
     def _on_log_message(self, message: str):
         """Handle log messages from worker thread"""
