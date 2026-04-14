@@ -247,7 +247,46 @@ class PatchManager:
             'type': 'xml_value',
             'search': r'<key>skipPaywallInfoPercentAndroid</key>\s*<value>0\.5</value>',
             'replace': '<key>skipPaywallInfoPercentAndroid</key>\n<value>1.0</value>'
-        }
+        },
+        'patch_2_offline_maps': {
+            'name': 'Offline Maps',
+            'file': 'smali_classes3/r8/p.smali',
+            'type': 'smali_method',
+            'search': r'\.method public static final t\(\)Z\n\s+\.locals 8.*?return v3\n\.end method',
+            'replace': r'''.method public static final t()Z
+    .locals 1
+
+    const/4 v0, 0x1
+
+    return v0
+.end method'''
+        },
+        'patch_3_navigation_premium_check': {
+            'name': 'Navigation Premium-Check #1',
+            'file': 'smali_classes3/com/calimoto/calimoto/premium/featureview/a.smali',
+            'type': 'smali_method',
+            'search': r'return-object p0\s+:cond_2\s+invoke-static \{\}, Lcom/calimoto/calimoto/parse/user/a;->O\(\)Z\s+move-result p0\s+if-eqz p0, :cond_3\s+sget-object p0, Lcom/calimoto/calimoto/premium/featureview/a\$b;->d:Lcom/calimoto/calimoto/premium/featureview/a\$b;',
+            'replace': r'''return-object p0
+    :cond_2
+    const/4 p0, 0x1
+    if-eqz p0, :cond_3
+    sget-object p0, Lcom/calimoto/calimoto/premium/featureview/a$b;->d:Lcom/calimoto/calimoto/premium/featureview/a$b;'''
+        },
+        'patch_4_navigation_premium_check_2': {
+            'name': 'Navigation Premium-Check #2',
+            'file': 'smali_classes3/com/calimoto/calimoto/parse/user/a.smali',
+            'type': 'smali_method',
+            'search': r'\.method public static O\(\)Z\s+\.locals 4.*?invoke-static \{\}, Lcom/calimoto/calimoto/parse/user/a;->P\(\)Z.*?return v2\n\.end method',
+            'replace': r'''.method public static O()Z
+    .locals 1
+
+    const/4 v0, 0x1
+
+    return v0
+.end method'''
+        },
+
+        
     }
 
     def __init__(self, working_dir: Path):
