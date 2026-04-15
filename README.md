@@ -1,6 +1,6 @@
 # Calimoto APK Patcher Tool
 
-![screenshot](screenshot.png)
+![screenshot](img/screenshot.png)
 
 ## Installation
 

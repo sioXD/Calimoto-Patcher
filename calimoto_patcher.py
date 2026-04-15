@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QFileDialog, QMessageBox, QGroupBox, QFrame, QScrollArea
 )
 from PySide6.QtCore import Qt, QThread, Signal, QSize, QTimer, QObject
-from PySide6.QtGui import QColor, QFont, QGuiApplication
+from PySide6.QtGui import QColor, QFont, QGuiApplication, QIcon
 
 # UTF-8 for Windows
 os.environ['PYTHONIOENCODING'] = 'utf-8'
@@ -824,6 +824,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Calimoto Patcher")
         self.resize(1000, 600)
         self.center()
+        self.setWindowIcon(QIcon('img/calimoto.svg'))
 
         # Colors (Material Design 3)
         self.colors = {
