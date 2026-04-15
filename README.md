@@ -51,9 +51,9 @@ apktool d calimoto.apk -o calimoto_work
 apktool b -o calimoto-modified.apk calimoto_app
 
 # one time
-# keytool -genkeypair -v -keystore mein-key.keystore -alias meinalias -keyalg RSA -keysize 2048 -validity 10000
+# keytool -genkeypair -v -keystore calimoto.keystore -alias meinalias -keyalg RSA -keysize 2048 -validity 10000
 
-apksigner sign --ks mein-key.keystore --ks-key-alias meinalias calimoto-modified.apk
+apksigner sign --ks calimoto.keystore --ks-key-alias meinalias calimoto-modified.apk
 
 apksigner verify calimoto-modified.apk
 ```
