@@ -1,3 +1,7 @@
+>[!IMPORTANT]
+>For Educational purposes only. <br>
+>This project is a combination of reverse engineering and testing ways to modify APKs with it.
+
 # Calimoto APK Patcher Tool
 
 ![screenshot](img/screenshot.png)
